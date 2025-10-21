@@ -54,7 +54,8 @@ python hp_inv.py --dataset nba --items 1000 --tk 5 --tree_scope topk
 ```
 See the pratical consideration in section 5.2. Full-tree merge (no insertion phase):
 
-```python hp_inv.py --dataset nba --items 1000 --tk  --tree_scope all 
+```
+python hp_inv.py --dataset nba --items 1000 --tk  --tree_scope all 
 ```
 
 ## Outputs
