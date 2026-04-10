@@ -1,17 +1,27 @@
 # Prereqs
 - Python 3.9+, Gurobi (licensed)
 - Data: `./data/per.csv` (NBA) or `./data/jee.csv` (JEE).
+- Data: need to generate reco dataset. 
 # Install
 ```
 pip install numpy pandas scikit-learn scipy gurobipy
 ```
+
+# To generate synthetic dataset
+- this step is to generate the ``reco" dataset.
+```
+python gen_data.py --lambda_1 0.1 --lambda_2 0.1 --output ./data/syn.csv
+```
 # LP-PP & DP‑PP 
 
-**LP‑PP (sample run (NBA dataset)):**
+**LP‑PP (sample run (nba/reco dataset)):**
 ```bash
 python main.py --dataset nba --items 1000 --tk 100   --lppp 1 --dppp 0   --outside_vs_mintop 1 --incremental_topk 1 --earlybreak 1
 ```
-**DP‑PP (sample run (NBA dataset)):**
+```bash
+python main.py --dataset reco --items 1000 --tk 100   --lppp 1 --dppp 0   --outside_vs_mintop 1 --incremental_topk 1 --earlybreak 1
+```
+**DP‑PP (sample run (nba/reco dataset)):**
 ```bash
 python main.py --dataset nba --items 1000 --tk 100 --lppp 0 --dppp 1
 ```
@@ -21,8 +31,7 @@ python main.py --dataset jee --jee_csv ./data/jee.csv --jee_scale 1   --items 20
 ```
 
 ## Core Flags (defaults in **bold**)
-- `--dataset {nba,jee}` (default **nba**)
-- `--jee_csv PATH` (default **./data/jee.csv**)
+- `--dataset {nba,jee,reco}` (default **nba**)
 - `--items INT` (default **1000**), `--tk INT` (default **100**)
 - **LP‑PP only:** `--outside_vs_mintop {0,1}` (**1**), `--incremental_topk {0,1}` (**1**), `--incremental_outside {0,1}` (**0**), `--earlybreak {0,1}` (**1**)
 - Runner select: `--lppp {0,1}` (**1**), `--dppp {0,1}` (**0**)
@@ -37,7 +46,7 @@ python main.py --dataset jee --jee_csv ./data/jee.csv --jee_scale 1   --items 20
 # LS-INV
 
 ```
-python ls_inv.py --dataset nba --items 1000 --tk 100 
+python ls_inv.py --dataset nba/reco --items 1000 --tk 100 
 ```
 ## Core Flags:
 In addition to --item and --tk (same as lp-pp and dp-pp), we have:
@@ -50,12 +59,12 @@ In addition to --item and --tk (same as lp-pp and dp-pp), we have:
 
 # HP-INV 
 ```
-python hp_inv.py --dataset nba --items 1000 --tk 5 --tree_scope topk 
+python hp_inv.py --dataset nba/reco --items 1000 --tk 5 --tree_scope topk 
 ```
 See the pratical consideration in section 5.2. Full-tree merge (no insertion phase):
 
 ```
-python hp_inv.py --dataset nba --items 1000 --tk  --tree_scope all 
+python hp_inv.py --dataset nba/reco --items 1000 --tk  --tree_scope all 
 ```
 
 ## Outputs

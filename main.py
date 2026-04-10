@@ -839,12 +839,55 @@ def get_jee_dataset(csv_path: str, drop_cols=None, scale=False):
    
     return out
 
+def get_reco_dataset(csv_path: str, scale=True):
+    """
+    Reads the synthetic recommendation CSV and returns only visible numeric features.
+
+    Excludes:
+      - rank
+      - hidden_score
+      - visible_score
+      - item_id
+
+    Also excludes hidden/debug columns if present:
+      - boost_signal
+      - diversity_penalty_signal
+      - is_sponsored
+      - is_new
+    """
+    df = pd.read_csv(csv_path, low_memory=False)
+    df.columns = [c.strip() for c in df.columns]
+
+    drop_cols = [
+        "rank",
+        "hidden_score",
+        "visible_score",
+        "item_id",
+        "boost_signal",
+        "diversity_penalty_signal",
+       # "is_sponsored",
+        "is_new",
+    ]
+    df = df.drop(columns=[c for c in drop_cols if c in df.columns], errors="ignore")
+
+    # keep only numeric columns
+    num_df = df.select_dtypes(include=[np.number]).copy()
+    if num_df.empty:
+        raise ValueError("No numeric columns found in recommendation dataset after dropping score/rank columns.")
+
+    if scale:
+        scaler = MinMaxScaler()
+        num_df[:] = scaler.fit_transform(num_df.values)
+    return num_df.to_numpy().tolist()
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, choices=["nba", "jee"], default="nba",
+    parser.add_argument("--dataset", type=str, choices=["nba", "jee","reco"], default="nba",
                         help="Choose dataset: nba (default) or jee")
     parser.add_argument("--jee_csv", type=str, default="./data/jee.csv",
                         help="Path to JEE CSV when --dataset jee")
+    parser.add_argument("--reco_csv", type=str, default="./data/reco.csv",
+                    help="Path to recommendation synthetic CSV when --dataset reco")
     parser.add_argument("--jee_scale", type=int, default=1,
                         help="If 1, apply MinMax scaling to JEE features (default 0)")
     parser.add_argument("--items", type=int, default=1000)
@@ -869,12 +912,18 @@ if __name__ == "__main__":
         points = data[:items]
         topk_ranking = [[i] for i in range(TK)]
 
-    else:
+    elif args.dataset == "jee":
         
         data = get_jee_dataset(args.jee_csv, scale=bool(args.jee_scale))
         if len(data) < TK:
             raise ValueError(f"JEE dataset has only {len(data)} rows; need at least TK={TK}.")
         points = data[:items]
+    else:
+        data = get_reco_dataset(args.reco_csv, scale=False)
+        if len(data) < TK:
+          raise ValueError(f"Recommendation dataset has only {len(data)} rows; need at least TK={TK}.")
+        points = data[:items]
+        topk_ranking = [[i] for i in range(TK)]
         
         
         topk_ranking = [[i] for i in range(TK)]

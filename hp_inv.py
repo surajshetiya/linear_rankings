@@ -288,10 +288,53 @@ def get_nba_dataset():
     dfS=pd.DataFrame(sc.fit_transform(df),columns=df.columns)
     return dfS.values
 
+def get_reco_dataset(csv_path: str, scale=True):
+    """
+    Reads the synthetic recommendation CSV and returns only visible numeric features.
+
+    Excludes:
+      - rank
+      - hidden_score
+      - visible_score
+      - item_id
+
+    Also excludes hidden/debug columns if present:
+      - boost_signal
+      - diversity_penalty_signal
+      - is_sponsored
+      - is_new
+    """
+    df = pd.read_csv(csv_path, low_memory=False)
+    df.columns = [c.strip() for c in df.columns]
+
+    drop_cols = [
+        "rank",
+        "hidden_score",
+        "visible_score",
+        "item_id",
+        "boost_signal",
+        "diversity_penalty_signal",
+       # "is_sponsored",
+        "is_new",
+    ]
+    df = df.drop(columns=[c for c in drop_cols if c in df.columns], errors="ignore")
+
+    # keep only numeric columns
+    num_df = df.select_dtypes(include=[np.number]).copy()
+    if num_df.empty:
+        raise ValueError("No numeric columns found in recommendation dataset after dropping score/rank columns.")
+
+    if scale:
+        scaler = MinMaxScaler()
+        num_df[:] = scaler.fit_transform(num_df.values)
+    return num_df.to_numpy().tolist()
+
 if __name__=="__main__":
     p=argparse.ArgumentParser()
     p.add_argument("--dataset",default="nba")
     p.add_argument("--items",type=int,default=1000)
+    p.add_argument("--reco_csv", type=str, default="./data/reco.csv",
+                    help="Path to recommendation synthetic CSV when --dataset reco")
     p.add_argument("--tk",type=int,default=5)
     p.add_argument("--seed",type=int,default=10)
     p.add_argument("--verbose",type=int,default=0)
@@ -322,4 +365,23 @@ if __name__=="__main__":
                                  window_size=args.window_size)
         print(f"Runtime={time.time()-start:.2f}s")
         summ=lppp_diagnostics_counts(pts.tolist(),topk,alpha)
+        print("summary",summ)
+    
+    if args.dataset == "reco":
+        data = get_reco_dataset(args.reco_csv, scale=False)
+        if len(data) < args.items:
+          raise ValueError(f"Recommendation dataset has only {len(data)} rows.")
+        pts = data[:args.items]
+        rank=np.arange(args.items)                         # simple rank vector: 0 best, 1 next, ...
+        topk=[[i] for i in range(args.tk)]                # for diagnostics
+
+        print("insert mode", args.insert_mode)
+        start=time.time()
+        opt=LinearRankingOptimizer(pts,rank,args.tk,fast_merge=bool(args.fast_merge))
+        alpha,final=opt.optimize(tree_scope=args.tree_scope,
+                                 leaf_size=args.leaf_size,
+                                 insert_mode=args.insert_mode,
+                                 window_size=args.window_size)
+        print(f"Runtime={time.time()-start:.2f}s")
+        summ=lppp_diagnostics_counts(pts,topk,alpha)
         print("summary",summ)
